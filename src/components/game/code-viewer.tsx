@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism'
-import { Save, Settings, Trash2 } from 'lucide-react'
+import { Save, Settings, Trash2, Loader2 } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 interface CodeViewerProps {
   content: string
@@ -57,44 +58,58 @@ export function CodeViewer({
   }
   
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between bg-gray-100 px-4 py-2 border-b">
+    <div className="rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-blue-100">
         <div className="flex items-center">
-          <Settings size={18} className="text-gray-500 mr-2" />
-          <h3 className="font-medium">{name}</h3>
+          <Settings size={18} className="text-blue-500 mr-2" />
+          <h3 className="font-medium text-gray-800">{name}</h3>
         </div>
         
         <div className="flex space-x-2">
           {!readOnly && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setIsEditing(!isEditing)}
-              className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+              className="text-blue-600 hover:text-blue-800 text-sm flex items-center px-2 py-1 rounded hover:bg-blue-50 transition-colors"
             >
               <Settings size={16} className="mr-1" />
               {isEditing ? '取消' : '编辑'}
-            </button>
+            </motion.button>
           )}
           
           {isEditing && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={handleSave}
               disabled={isSaving}
-              className="text-green-600 hover:text-green-800 text-sm flex items-center disabled:opacity-50"
+              className="text-green-600 hover:text-green-800 text-sm flex items-center px-2 py-1 rounded hover:bg-green-50 disabled:opacity-50 transition-colors"
             >
-              <Save size={16} className="mr-1" />
+              {isSaving ? (
+                <Loader2 size={16} className="animate-spin mr-1" />
+              ) : (
+                <Save size={16} className="mr-1" />
+              )}
               {isSaving ? '保存中...' : '保存'}
-            </button>
+            </motion.button>
           )}
           
           {!readOnly && onDelete && (
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={handleDelete}
               disabled={isDeleting}
-              className="text-red-600 hover:text-red-800 text-sm flex items-center disabled:opacity-50"
+              className="text-red-600 hover:text-red-800 text-sm flex items-center px-2 py-1 rounded hover:bg-red-50 disabled:opacity-50 transition-colors"
             >
-              <Trash2 size={16} className="mr-1" />
+              {isDeleting ? (
+                <Loader2 size={16} className="animate-spin mr-1" />
+              ) : (
+                <Trash2 size={16} className="mr-1" />
+              )}
               {isDeleting ? '删除中...' : '删除'}
-            </button>
+            </motion.button>
           )}
         </div>
       </div>
@@ -103,10 +118,14 @@ export function CodeViewer({
         <textarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          className="w-full min-h-[300px] p-4 font-mono text-sm focus:outline-none border-0"
+          className="w-full min-h-[300px] p-4 font-mono text-sm focus:outline-none border-0 bg-gray-50"
         />
       ) : (
-        <div className="max-h-[500px] overflow-y-auto">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="max-h-[500px] overflow-y-auto bg-gray-900"
+        >
           <SyntaxHighlighter
             language="plaintext"
             style={vscDarkPlus}
@@ -115,7 +134,7 @@ export function CodeViewer({
           >
             {code}
           </SyntaxHighlighter>
-        </div>
+        </motion.div>
       )}
     </div>
   )

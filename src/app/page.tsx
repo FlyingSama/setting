@@ -25,7 +25,7 @@ export default function Home() {
   }
   
   return (
-    <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50">
+    <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 flex flex-col">
       {/* 背景装饰 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-10 left-10 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
@@ -33,7 +33,7 @@ export default function Home() {
         <div className="absolute bottom-40 left-1/3 w-80 h-80 bg-green-100 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
       </div>
       
-      <div className="container mx-auto px-4 py-10 relative z-10">
+      <div className="container mx-auto px-4 py-10 relative z-10 flex-1">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -109,6 +109,20 @@ export default function Home() {
           浮影の游戏设置 · 轻松管理您的游戏配置文件
         </motion.div>
       </div>
+      
+      <footer className="w-full py-6 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-inner relative z-10">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="text-center text-gray-600"
+          >
+            <p className="mb-1">浮影の游戏设置 · 轻松管理您的游戏配置文件</p>
+            <p className="text-xs text-gray-500">© {new Date().getFullYear()} 保留所有权利</p>
+          </motion.div>
+        </div>
+      </footer>
       
       <AddGameDialog 
         open={isDialogOpen} 

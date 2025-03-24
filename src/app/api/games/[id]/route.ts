@@ -8,15 +8,38 @@ export async function GET(
 ) {
   try {
     const _params = await params
-    const id = _params.id
+    const identifier = _params.id
     
-    const game = await prisma.game.findUnique({
-      where: { id },
-      include: {
-        settingFiles: true,
-        tags: true
-      }
-    })
+    let game = null
+    
+    // 首先尝试通过ID查找游戏
+    if (/^[a-z0-9]+$/i.test(identifier) && identifier.length > 10) {
+      game = await prisma.game.findUnique({
+        where: { id: identifier },
+        include: {
+          settingFiles: true,
+          tags: true
+        }
+      })
+    }
+    
+    // 如果通过ID没找到，尝试通过名称查找
+    if (!game) {
+      // 将URL友好格式的游戏名转换回原始格式（将连字符替换为空格）
+      const searchName = identifier.replace(/-/g, ' ')
+      
+      game = await prisma.game.findFirst({
+        where: {
+          name: {
+            contains: searchName
+          }
+        },
+        include: {
+          settingFiles: true,
+          tags: true
+        }
+      })
+    }
     
     if (!game) {
       return NextResponse.json({ error: '游戏未找到' }, { status: 404 })
@@ -24,7 +47,7 @@ export async function GET(
     
     // 更新使用次数
     await prisma.game.update({
-      where: { id },
+      where: { id: game.id },
       data: { usageCount: { increment: 1 } }
     })
     

@@ -1,11 +1,24 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Loader2, Gamepad, Upload, X, FileText, Trash2, Settings, Download } from 'lucide-react'
 import { CodeViewer } from '@/components/game/code-viewer'
+import { motion } from 'framer-motion'
+
+// 将游戏名称转换为URL友好的格式
+export function slugify(text: string) {
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-')    // 替换空格为 -
+    .replace(/[^\w\-]+/g, '') // 删除所有非单词字符
+    .replace(/\-\-+/g, '-')   // 替换多个 - 为单个 -
+    .replace(/^-+/, '')       // 修剪开头的 -
+    .replace(/-+$/, '');      // 修剪结尾的 -
+}
 
 // 声明 JSZip 全局变量类型
 declare global {
@@ -47,6 +60,7 @@ function isSafeImageUrl(url: string | null): boolean {
 
 export default function GameDetailsPage() {
   const params = useParams()
+  const router = useRouter()
   const id = params.id as string
   
   const [game, setGame] = useState<Game | null>(null)
@@ -71,6 +85,7 @@ export default function GameDetailsPage() {
       setLoading(true)
       
       try {
+        // 使用原始id查询，API会处理是否为游戏名称或ID
         const response = await fetch(`/api/games/${id}`)
         
         if (!response.ok) {
@@ -79,6 +94,12 @@ export default function GameDetailsPage() {
         
         const data = await response.json()
         setGame(data)
+        
+        // 如果URL不是游戏名称的格式，重定向到使用名称的URL
+        const currentSlug = slugify(data.name)
+        if (id !== currentSlug) {
+          router.replace(`/games/${currentSlug}`, { scroll: false })
+        }
       } catch (error) {
         console.error('获取游戏详情失败:', error)
         setError('无法加载游戏详情')
@@ -88,7 +109,7 @@ export default function GameDetailsPage() {
     }
     
     fetchGame()
-  }, [id])
+  }, [id, router])
   
   // 设置激活的设置文件
   useEffect(() => {
@@ -484,268 +505,295 @@ export default function GameDetailsPage() {
   }
   
   return (
-    <main className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <Link
-            href="/"
-            className="inline-flex items-center text-blue-600 hover:underline"
-          >
-            <ArrowLeft size={16} className="mr-1" />
-            返回首页
-          </Link>
-          
-          <button
-            onClick={handleDeleteGame}
-            disabled={isDeletingGame}
-            className="flex items-center text-red-600 hover:text-red-800 disabled:opacity-50"
-          >
-            {isDeletingGame ? (
-              <Loader2 size={16} className="animate-spin mr-1" />
-            ) : (
-              <Trash2 size={16} className="mr-1" />
-            )}
-            删除游戏
-          </button>
-        </div>
-        
-        <div className="flex items-center mb-6">
-          <div className="w-16 h-16 relative mr-4 bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center group">
-            <input
-              ref={iconInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              onChange={handleIconUpload}
-              className="hidden"
-            />
-            
-            {isEditingIcon && (
-              <button
-                onClick={cancelIconEdit}
-                className="absolute -left-2 -top-2 z-50 p-1.5 bg-white rounded-full shadow-md text-gray-500 hover:text-gray-700 border border-gray-200"
-              >
-                <X size={16} />
-              </button>
-            )}
-            
-            {isEditingIcon ? (
-              isUploadingIcon ? (
-                <div className="flex flex-col items-center justify-center w-full h-full">
-                  <Loader2 className="animate-spin w-8 h-8 text-blue-500" />
-                </div>
-              ) : (
-                <div 
-                  onClick={triggerIconInput}
-                  className="flex flex-col items-center justify-center w-full h-full bg-gray-200 cursor-pointer"
-                >
-                  <Upload className="w-6 h-6 text-gray-500" />
-                  <span className="text-xs text-gray-500 mt-1">上传</span>
-                </div>
-              )
-            ) : (
-              <>
-                {game.iconUrl && isSafeImageUrl(game.iconUrl) ? (
-                  <div className="relative w-full h-full">
-                    <Image
-                      src={iconPreview || game.iconUrl}
-                      alt={game.name}
-                      fill
-                      className="object-cover"
-                      onError={(e) => {
-                        // 当图片加载失败时，将替换为图标
-                        const imgElement = e.currentTarget as HTMLImageElement;
-                        imgElement.style.display = 'none';
-                      }}
-                    />
-                    <button
-                      onClick={() => setIsEditingIcon(true)}
-                      className="absolute inset-0 w-full h-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white p-1"
-                    >
-                      修改
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center w-full h-full">
-                    <Gamepad className="text-gray-400 w-8 h-8" />
-                    <button
-                      onClick={() => setIsEditingIcon(true)}
-                      className="absolute inset-0 w-full h-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white p-1 text-xs"
-                    >
-                      添加图标
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-          
-          <div>
-            <h1 className="text-3xl font-bold">{game.name}</h1>
-            {game.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {game.tags.map(tag => (
-                  <span
-                    key={tag.id}
-                    className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm"
-                  >
-                    {tag.name}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+    <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50">
+      {/* 背景装饰 */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-10 left-10 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+        <div className="absolute top-40 right-20 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+        <div className="absolute bottom-40 left-1/3 w-80 h-80 bg-green-100 rounded-full mix-blend-multiply filter blur-3xl opacity-10"></div>
       </div>
       
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center">
-            <h2 className="text-xl font-semibold mr-3">配置文件</h2>
+      <div className="container mx-auto px-4 py-8 relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-6"
+        >
+          <div className="flex justify-between items-center mb-4">
+            <Link
+              href="/"
+              className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <ArrowLeft size={16} className="mr-1" />
+              返回首页
+            </Link>
             
-            {game.settingFiles.length > 0 && (
-              <button
-                onClick={handleDownloadAllFiles}
-                disabled={isDownloading}
-                className="flex items-center px-3 py-1 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 disabled:opacity-50"
+            <button
+              onClick={handleDeleteGame}
+              disabled={isDeletingGame}
+              className="flex items-center text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors"
+            >
+              {isDeletingGame ? (
+                <Loader2 size={16} className="animate-spin mr-1" />
+              ) : (
+                <Trash2 size={16} className="mr-1" />
+              )}
+              删除游戏
+            </button>
+          </div>
+          
+          <div className="flex items-center mb-6 backdrop-blur-sm bg-white/90 p-5 rounded-xl shadow-sm">
+            <div className="w-16 h-16 relative mr-4 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg overflow-hidden flex items-center justify-center group shadow-inner">
+              <input
+                ref={iconInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleIconUpload}
+                className="hidden"
+              />
+              
+              {isEditingIcon && (
+                <button
+                  onClick={cancelIconEdit}
+                  className="absolute -left-2 -top-2 z-50 p-1.5 bg-white rounded-full shadow-md text-gray-500 hover:text-gray-700 border border-gray-200"
+                >
+                  <X size={16} />
+                </button>
+              )}
+              
+              {isEditingIcon ? (
+                isUploadingIcon ? (
+                  <div className="flex flex-col items-center justify-center w-full h-full">
+                    <Loader2 className="animate-spin w-8 h-8 text-blue-500" />
+                  </div>
+                ) : (
+                  <div 
+                    onClick={triggerIconInput}
+                    className="flex flex-col items-center justify-center w-full h-full bg-blue-50 cursor-pointer"
+                  >
+                    <Upload className="w-6 h-6 text-blue-500" />
+                    <span className="text-xs text-blue-500 mt-1">上传</span>
+                  </div>
+                )
+              ) : (
+                <>
+                  {game.iconUrl && isSafeImageUrl(game.iconUrl) ? (
+                    <div className="relative w-full h-full">
+                      <Image
+                        src={iconPreview || game.iconUrl}
+                        alt={game.name}
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          // 当图片加载失败时，将替换为图标
+                          const imgElement = e.currentTarget as HTMLImageElement;
+                          imgElement.style.display = 'none';
+                        }}
+                      />
+                      <button
+                        onClick={() => setIsEditingIcon(true)}
+                        className="absolute inset-0 w-full h-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white p-1"
+                      >
+                        修改
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center w-full h-full">
+                      <Gamepad className="text-indigo-400 w-8 h-8" />
+                      <button
+                        onClick={() => setIsEditingIcon(true)}
+                        className="absolute inset-0 w-full h-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white p-1 text-xs"
+                      >
+                        添加图标
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            
+            <div>
+              <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">{game.name}</h1>
+              {game.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {game.tags.map(tag => (
+                    <span
+                      key={tag.id}
+                      className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm"
+                    >
+                      {tag.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="backdrop-blur-sm bg-white/90 rounded-xl shadow-lg p-6 mb-8"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <h2 className="text-xl font-semibold mr-3">配置文件</h2>
+              
+              {game.settingFiles.length > 0 && (
+                <button
+                  onClick={handleDownloadAllFiles}
+                  disabled={isDownloading}
+                  className="flex items-center px-3 py-1 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 disabled:opacity-50 transition-all duration-200"
+                >
+                  {isDownloading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin mr-1" />
+                      打包中...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={14} className="mr-1" />
+                      下载全部文件
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            
+            <div className="flex">
+              <input
+                ref={configFileInputRef}
+                type="file"
+                accept=".cfg,.vcfg,.txt,.ini,.conf,.config,.json"
+                onChange={handleConfigFileUpload}
+                className="hidden"
+                multiple
+              />
+              
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={triggerConfigFileInput}
+                disabled={isUploadingConfig}
+                className="flex items-center px-4 py-2 mr-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:shadow-md disabled:opacity-50 transition-all duration-200"
               >
-                {isDownloading ? (
+                {isUploadingConfig ? (
                   <>
-                    <Loader2 size={14} className="animate-spin mr-1" />
-                    打包中...
+                    <Loader2 size={16} className="animate-spin mr-1" />
+                    上传中...
                   </>
                 ) : (
                   <>
-                    <Download size={14} className="mr-1" />
-                    下载全部文件
+                    <Upload size={16} className="mr-1" />
+                    导入配置
                   </>
                 )}
-              </button>
-            )}
+              </motion.button>
+              
+              <input
+                type="text"
+                value={newSettingName}
+                onChange={(e) => setNewSettingName(e.target.value)}
+                placeholder="新配置文件名称"
+                className="px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleAddSettingFile}
+                disabled={!newSettingName || isAddingFile}
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-r-lg hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                {isAddingFile ? (
+                  <Loader2 size={16} className="animate-spin mr-1" />
+                ) : (
+                  <Plus size={16} className="mr-1" />
+                )}
+                添加
+              </motion.button>
+            </div>
           </div>
           
-          <div className="flex">
-            <input
-              ref={configFileInputRef}
-              type="file"
-              accept=".cfg,.vcfg,.txt,.ini,.conf,.config,.json"
-              onChange={handleConfigFileUpload}
-              className="hidden"
-              multiple
-            />
-            
-            <button
-              onClick={triggerConfigFileInput}
-              disabled={isUploadingConfig}
-              className="flex items-center px-4 py-2 mr-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
-            >
-              {isUploadingConfig ? (
-                <>
-                  <Loader2 size={16} className="animate-spin mr-1" />
-                  上传中...
-                </>
-              ) : (
-                <>
-                  <Upload size={16} className="mr-1" />
-                  导入配置
-                </>
-              )}
-            </button>
-            
-            <input
-              type="text"
-              value={newSettingName}
-              onChange={(e) => setNewSettingName(e.target.value)}
-              placeholder="新配置文件名称"
-              className="px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={handleAddSettingFile}
-              disabled={!newSettingName || isAddingFile}
-              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isAddingFile ? (
-                <Loader2 size={16} className="animate-spin mr-1" />
-              ) : (
-                <Plus size={16} className="mr-1" />
-              )}
-              添加
-            </button>
-          </div>
-        </div>
-        
-        {uploadError && (
-          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-r-lg">
-            <p>{uploadError}</p>
-          </div>
-        )}
-        
-        {game.settingFiles.length > 0 ? (
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex-1 overflow-x-auto">
-                <div className="flex border-b pb-1">
+          {uploadError && (
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-r-lg">
+              <p>{uploadError}</p>
+            </div>
+          )}
+          
+          {game.settingFiles.length > 0 ? (
+            <div>
+              <div className="overflow-x-auto relative z-20">
+                <div className="flex border-0 mb-4">
                   {game.settingFiles.map(setting => (
-                    <button
+                    <motion.button
                       key={setting.id}
                       onClick={() => setSelectedSettingId(setting.id)}
-                      className={`px-4 py-2 flex items-center whitespace-nowrap mr-2 rounded-t-lg ${
+                      whileHover={{ y: -2 }}
+                      className={`px-4 py-2 flex items-center whitespace-nowrap mr-2 rounded-lg transition-all duration-200 ${
                         selectedSettingId === setting.id 
-                          ? 'bg-blue-500 text-white' 
-                          : 'bg-gray-100 hover:bg-gray-200'
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md' 
+                          : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                       }`}
                     >
                       <Settings size={14} className="mr-1" />
                       {setting.name}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
+              
+              {selectedSettingId && (
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+                  {game.settingFiles
+                    .filter(setting => setting.id === selectedSettingId)
+                    .map(setting => (
+                      <CodeViewer
+                        key={setting.id}
+                        id={setting.id}
+                        name={setting.name}
+                        content={setting.content}
+                        onSave={handleSaveSettingFile}
+                        onDelete={handleDeleteSettingFile}
+                      />
+                    ))}
+                </div>
+              )}
+              
+              {selectedSettingId && (
+                <div className="mt-4 flex justify-end">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      const setting = game.settingFiles.find(s => s.id === selectedSettingId)
+                      if (setting) {
+                        handleDownloadFile(setting.name, setting.content)
+                      }
+                    }}
+                    className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:shadow-md transition-all duration-200"
+                  >
+                    <Download size={16} className="mr-1" />
+                    下载当前文件
+                  </motion.button>
+                </div>
+              )}
             </div>
-            
-            {selectedSettingId && (
-              <div>
-                {game.settingFiles
-                  .filter(setting => setting.id === selectedSettingId)
-                  .map(setting => (
-                    <CodeViewer
-                      key={setting.id}
-                      id={setting.id}
-                      name={setting.name}
-                      content={setting.content}
-                      onSave={handleSaveSettingFile}
-                      onDelete={handleDeleteSettingFile}
-                    />
-                  ))}
+          ) : (
+            <div className="text-center py-12 bg-blue-50/50 rounded-lg backdrop-blur-sm">
+              <div className="bg-blue-100/70 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText size={24} className="text-blue-500" />
               </div>
-            )}
-            
-            {selectedSettingId && (
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => {
-                    const setting = game.settingFiles.find(s => s.id === selectedSettingId)
-                    if (setting) {
-                      handleDownloadFile(setting.name, setting.content)
-                    }
-                  }}
-                  className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  <Download size={16} className="mr-1" />
-                  下载当前文件
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <h3 className="text-lg font-medium text-gray-500 mb-2">
-              暂无配置文件
-            </h3>
-            <p className="text-gray-400">
-              使用上方输入框添加新的配置文件
-            </p>
-          </div>
-        )}
+              <h3 className="text-lg font-medium text-gray-700 mb-2">
+                暂无配置文件
+              </h3>
+              <p className="text-gray-500">
+                使用上方的"导入配置"按钮上传配置文件，或添加新的配置文件
+              </p>
+            </div>
+          )}
+        </motion.div>
       </div>
     </main>
   )
