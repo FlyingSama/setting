@@ -7,7 +7,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = await params.id
+    const _params = await params
+    const id = _params.id
     
     const setting = await prisma.setting.findUnique({
       where: { id },
@@ -33,7 +34,8 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = await params.id
+    const _params = await params
+    const id = _params.id
     const body = await request.json()
     const { name, content } = body
     
@@ -58,7 +60,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = await params.id
+    const _params = await params
+    const id = _params.id
     
     await prisma.setting.delete({
       where: { id }
