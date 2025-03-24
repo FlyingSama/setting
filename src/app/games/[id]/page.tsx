@@ -438,7 +438,7 @@ export default function GameDetailsPage() {
             {isEditingIcon && (
               <button
                 onClick={cancelIconEdit}
-                className="absolute -left-2 -top-2 z-10 p-1 bg-white rounded-full shadow-md text-gray-500 hover:text-gray-700"
+                className="absolute -left-2 -top-2 z-50 p-1.5 bg-white rounded-full shadow-md text-gray-500 hover:text-gray-700 border border-gray-200"
               >
                 <X size={16} />
               </button>
