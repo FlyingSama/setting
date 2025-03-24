@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { motion } from 'framer-motion'
 import { Gamepad, Trash2, Loader2, Settings } from 'lucide-react'
 
@@ -23,11 +23,13 @@ function isSafeImageUrl(url: string | null): boolean {
   return false;
 }
 
-export function GameCard({ id, name, iconUrl, settingsCount, onDelete }: GameCardProps) {
+// 使用React.memo优化渲染性能
+export const GameCard = memo(function GameCard({ id, name, iconUrl, settingsCount, onDelete }: GameCardProps) {
   // 检查URL是否安全
   const safeIconUrl = iconUrl && isSafeImageUrl(iconUrl) ? iconUrl : null;
   const [isDeleting, setIsDeleting] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -77,24 +79,15 @@ export function GameCard({ id, name, iconUrl, settingsCount, onDelete }: GameCar
         <div className="p-5 flex flex-col h-full">
           <div className="flex items-center mb-4">
             <div className="w-16 h-16 relative mr-4 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg overflow-hidden flex items-center justify-center shadow-inner">
-              {safeIconUrl ? (
+              {safeIconUrl && !imageError ? (
                 <div className="relative w-full h-full">
                   <Image
                     src={safeIconUrl}
                     alt={name}
                     fill
+                    loading="lazy" 
                     className="object-cover"
-                    onError={(e) => {
-                      // 当图片加载失败时，将替换为图标
-                      const imgElement = e.currentTarget;
-                      if (imgElement.parentElement) {
-                        imgElement.style.display = 'none';
-                        const gamepadIcon = document.createElement('div');
-                        gamepadIcon.className = 'flex items-center justify-center w-full h-full';
-                        gamepadIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-400"><path d="M6 12h4"/><path d="M8 10v4"/><path d="M15 13h.01"/><path d="M18 11h.01"/><rect width="20" height="12" x="2" y="6" rx="2"/></svg>`;
-                        imgElement.parentElement.appendChild(gamepadIcon);
-                      }
-                    }}
+                    onError={() => setImageError(true)}
                   />
                 </div>
               ) : (
@@ -131,4 +124,4 @@ export function GameCard({ id, name, iconUrl, settingsCount, onDelete }: GameCar
       </Link>
     </motion.div>
   )
-} 
+}); 

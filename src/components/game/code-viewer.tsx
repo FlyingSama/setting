@@ -1,8 +1,18 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism'
 import { Save, Settings, Trash2, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import dynamic from 'next/dynamic'
+
+// 动态加载语法高亮器
+const DynamicSyntaxHighlighter = dynamic(
+  () => import('react-syntax-highlighter').then(mod => mod.Prism),
+  { 
+    loading: () => <div className="p-4 bg-gray-800 text-gray-300 font-mono text-sm">加载代码中...</div>,
+    ssr: false 
+  }
+)
 
 interface CodeViewerProps {
   content: string
@@ -13,7 +23,7 @@ interface CodeViewerProps {
   readOnly?: boolean
 }
 
-export function CodeViewer({
+export const CodeViewer = memo(function CodeViewer({
   content,
   name,
   id,
@@ -126,16 +136,16 @@ export function CodeViewer({
           animate={{ opacity: 1 }}
           className="max-h-[500px] overflow-y-auto bg-gray-900"
         >
-          <SyntaxHighlighter
+          <DynamicSyntaxHighlighter
             language="plaintext"
             style={vscDarkPlus}
             customStyle={{ margin: 0, borderRadius: 0 }}
             wrapLongLines
           >
             {code}
-          </SyntaxHighlighter>
+          </DynamicSyntaxHighlighter>
         </motion.div>
       )}
     </div>
   )
-} 
+}) 

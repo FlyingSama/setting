@@ -1,12 +1,16 @@
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
 
+// 一小时的缓存时间（秒）
+const CACHE_MAX_AGE = 3600
+
 // 获取单个游戏
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    // 在Next.js 15.2.3中，params是异步的，需要先await
     const _params = await params
     const id = _params.id
     
@@ -23,13 +27,16 @@ export async function GET(
       return NextResponse.json({ error: '游戏未找到' }, { status: 404 })
     }
     
-    // 更新使用次数
-    await prisma.game.update({
+    // 异步更新使用次数，但不等待完成
+    prisma.game.update({
       where: { id },
       data: { usageCount: { increment: 1 } }
-    })
+    }).catch(err => console.error('Error updating usage count:', err))
     
-    return NextResponse.json(game)
+    // 设置响应头，支持缓存
+    const response = NextResponse.json(game)
+    response.headers.set('Cache-Control', `max-age=${CACHE_MAX_AGE}, s-maxage=${CACHE_MAX_AGE}, stale-while-revalidate`)
+    return response
   } catch (error) {
     console.error('Error fetching game:', error)
     return NextResponse.json({ error: '获取游戏详情失败' }, { status: 500 })
@@ -42,6 +49,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 在Next.js 15.2.3中，params是异步的，需要先await
     const _params = await params
     const id = _params.id
     const body = await request.json()
@@ -92,6 +100,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // 在Next.js 15.2.3中，params是异步的，需要先await
     const _params = await params
     const id = _params.id
     

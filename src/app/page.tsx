@@ -3,10 +3,28 @@
 import { useState, useEffect } from 'react'
 import { Plus, Gamepad, Sparkles } from 'lucide-react'
 import { SearchInput } from '@/components/ui/search-input'
-import { AddGameDialog } from '@/components/game/add-game-dialog'
-import { TagFilter } from '@/components/game/tag-filter'
-import { GameGrid } from '@/components/game/game-grid'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
+
+// 动态导入组件，减小初始加载体积
+const AddGameDialog = dynamic(() => import('@/components/game/add-game-dialog').then(mod => mod.AddGameDialog), {
+  ssr: false,
+  loading: () => null
+})
+const TagFilter = dynamic(() => import('@/components/game/tag-filter').then(mod => mod.TagFilter), {
+  ssr: false,
+  loading: () => <div className="h-10 w-44 bg-gray-100 animate-pulse rounded-lg"></div>
+})
+const GameGrid = dynamic(() => import('@/components/game/game-grid').then(mod => mod.GameGrid), {
+  ssr: true,
+  loading: () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="h-44 bg-gray-100 animate-pulse rounded-xl"></div>
+      ))}
+    </div>
+  )
+})
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -99,15 +117,6 @@ export default function Home() {
             </motion.div>
           )}
         </div>
-        
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="text-center text-gray-500 text-sm py-4 mt-8"
-        >
-          浮影の游戏设置 · 轻松管理您的游戏配置文件
-        </motion.div>
       </div>
       
       <footer className="w-full py-6 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-inner relative z-10">

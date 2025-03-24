@@ -1,24 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Loader2, Gamepad, Upload, X, FileText, Trash2, Settings, Download } from 'lucide-react'
 import { CodeViewer } from '@/components/game/code-viewer'
 import { motion } from 'framer-motion'
-
-// 将游戏名称转换为URL友好的格式
-export function slugify(text: string) {
-  return text
-    .toString()
-    .toLowerCase()
-    .replace(/\s+/g, '-')    // 替换空格为 -
-    .replace(/[^\w\-]+/g, '') // 删除所有非单词字符
-    .replace(/\-\-+/g, '-')   // 替换多个 - 为单个 -
-    .replace(/^-+/, '')       // 修剪开头的 -
-    .replace(/-+$/, '');      // 修剪结尾的 -
-}
 
 // 声明 JSZip 全局变量类型
 declare global {
@@ -60,7 +48,6 @@ function isSafeImageUrl(url: string | null): boolean {
 
 export default function GameDetailsPage() {
   const params = useParams()
-  const router = useRouter()
   const id = params.id as string
   
   const [game, setGame] = useState<Game | null>(null)
@@ -80,13 +67,18 @@ export default function GameDetailsPage() {
   const [isDeletingGame, setIsDeletingGame] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   
+  // 获取游戏详情
   useEffect(() => {
     const fetchGame = async () => {
+      if (!id) return;
+      
       setLoading(true)
+      setError(null)
       
       try {
-        // 使用ID查询游戏
-        const response = await fetch(`/api/games/${id}`)
+        const response = await fetch(`/api/games/${id}`, {
+          cache: 'no-store' // 避免缓存过期的数据
+        })
         
         if (!response.ok) {
           throw new Error('游戏不存在或无法获取')
@@ -111,6 +103,22 @@ export default function GameDetailsPage() {
       setSelectedSettingId(game.settingFiles[0].id)
     }
   }, [game, selectedSettingId])
+  
+  // 加载JSZip库
+  useEffect(() => {
+    if (!window.JSZip && game && game.settingFiles.length > 0) {
+      const script = document.createElement('script')
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
+      script.async = true
+      document.body.appendChild(script)
+      
+      return () => {
+        if (document.body.contains(script)) {
+          document.body.removeChild(script)
+        }
+      }
+    }
+  }, [game])
   
   const handleAddSettingFile = async () => {
     if (!newSettingName || !game) return
@@ -453,20 +461,6 @@ export default function GameDetailsPage() {
       setIsDownloading(false)
     }
   }
-
-  // 加载JSZip库
-  useEffect(() => {
-    if (!window.JSZip && game && game.settingFiles.length > 0) {
-      const script = document.createElement('script')
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
-      script.async = true
-      document.body.appendChild(script)
-      
-      return () => {
-        document.body.removeChild(script)
-      }
-    }
-  }, [game])
   
   if (loading) {
     return (
@@ -631,7 +625,7 @@ export default function GameDetailsPage() {
           transition={{ duration: 0.3, delay: 0.1 }}
           className="backdrop-blur-sm bg-white/90 rounded-xl shadow-lg p-6 mb-8"
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
               <h2 className="text-xl font-semibold mr-3">配置文件</h2>
               
@@ -718,14 +712,16 @@ export default function GameDetailsPage() {
           
           {game.settingFiles.length > 0 ? (
             <div>
-              <div className="overflow-x-auto relative z-20">
-                <div className="flex border-0 mb-4">
+              <div className="mb-6">
+                <div className="flex flex-wrap gap-2">
                   {game.settingFiles.map(setting => (
                     <motion.button
                       key={setting.id}
                       onClick={() => setSelectedSettingId(setting.id)}
-                      whileHover={{ y: -2 }}
-                      className={`px-4 py-2 flex items-center whitespace-nowrap mr-2 rounded-lg transition-all duration-200 ${
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                      className={`px-4 py-2.5 flex items-center rounded-lg ${
                         selectedSettingId === setting.id 
                           ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md' 
                           : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
