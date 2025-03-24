@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism'
-import { Save, Download, Settings, Trash2 } from 'lucide-react'
+import { Save, Settings, Trash2 } from 'lucide-react'
 
 interface CodeViewerProps {
   content: string
@@ -56,18 +56,6 @@ export function CodeViewer({
     }
   }
   
-  const handleDownload = () => {
-    const blob = new Blob([code], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = name
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-  
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="flex items-center justify-between bg-gray-100 px-4 py-2 border-b">
@@ -97,14 +85,6 @@ export function CodeViewer({
               {isSaving ? '保存中...' : '保存'}
             </button>
           )}
-          
-          <button
-            onClick={handleDownload}
-            className="text-gray-600 hover:text-gray-800 text-sm flex items-center"
-          >
-            <Download size={16} className="mr-1" />
-            下载
-          </button>
           
           {!readOnly && onDelete && (
             <button

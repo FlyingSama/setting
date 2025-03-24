@@ -4,8 +4,15 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Loader2, Gamepad, Upload, X, FileText, Trash2, Settings } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, Gamepad, Upload, X, FileText, Trash2, Settings, Download } from 'lucide-react'
 import { CodeViewer } from '@/components/game/code-viewer'
+
+// 声明 JSZip 全局变量类型
+declare global {
+  interface Window {
+    JSZip: any;
+  }
+}
 
 interface Game {
   id: string
@@ -57,6 +64,7 @@ export default function GameDetailsPage() {
   const configFileInputRef = useRef<HTMLInputElement>(null)
   const [selectedSettingId, setSelectedSettingId] = useState<string | null>(null)
   const [isDeletingGame, setIsDeletingGame] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   
   useEffect(() => {
     const fetchGame = async () => {
@@ -241,60 +249,67 @@ export default function GameDetailsPage() {
   const handleConfigFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!game) return
     
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = e.target.files
+    if (!files || files.length === 0) return
     
     setIsUploadingConfig(true)
     setUploadError(null)
     
     try {
-      // 从文件名创建设置名称（去掉扩展名）
-      const fileName = file.name
-      const settingName = fileName.substring(0, fileName.lastIndexOf('.'))
-      
-      // 创建FormData对象
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('fileType', 'config')
-      
-      // 发送上传请求
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || '上传失败')
+      // 处理多个文件
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        
+        // 从文件名创建设置名称（去掉扩展名）
+        const fileName = file.name
+        const settingName = fileName.substring(0, fileName.lastIndexOf('.'))
+        
+        // 创建FormData对象
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('fileType', 'config')
+        
+        // 发送上传请求
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || '上传失败')
+        }
+        
+        const data = await response.json()
+        
+        // 创建新的设置文件
+        const saveResponse = await fetch('/api/settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: settingName || fileName,
+            content: data.content,
+            gameId: game.id
+          }),
+        })
+        
+        if (!saveResponse.ok) {
+          throw new Error('保存设置文件失败')
+        }
+        
+        const newSetting = await saveResponse.json()
+        
+        // 更新游戏对象，添加新设置文件
+        setGame(prevGame => {
+          if (!prevGame) return prevGame
+          return {
+            ...prevGame,
+            settingFiles: [...prevGame.settingFiles, newSetting]
+          }
+        })
       }
-      
-      const data = await response.json()
-      
-      // 创建新的设置文件
-      const saveResponse = await fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: settingName || fileName,
-          content: data.content,
-          gameId: game.id
-        }),
-      })
-      
-      if (!saveResponse.ok) {
-        throw new Error('保存设置文件失败')
-      }
-      
-      const newSetting = await saveResponse.json()
-      
-      setGame({
-        ...game,
-        settingFiles: [...game.settingFiles, newSetting]
-      })
-      
-      setIsShowingUpload(false)
     } catch (error) {
       console.error('配置文件上传失败:', error)
       setUploadError(error instanceof Error ? error.message : '配置文件上传失败')
@@ -368,6 +383,75 @@ export default function GameDetailsPage() {
       setIsDeletingGame(false)
     }
   }
+  
+  // 处理单个文件下载
+  const handleDownloadFile = (fileName: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+  
+  // 处理批量下载所有配置文件
+  const handleDownloadAllFiles = async () => {
+    if (!game || game.settingFiles.length === 0) return
+    
+    setIsDownloading(true)
+    
+    try {
+      // 如果浏览器支持JSZip，则打包下载
+      if (window.JSZip) {
+        const JSZip = window.JSZip
+        const zip = new JSZip()
+        
+        // 添加所有文件到zip
+        game.settingFiles.forEach(setting => {
+          zip.file(setting.name, setting.content)
+        })
+        
+        // 生成zip文件并下载
+        const content = await zip.generateAsync({ type: 'blob' })
+        const url = URL.createObjectURL(content)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${game.name}_配置文件.zip`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else {
+        // 如果不支持JSZip，则逐个下载文件
+        for (const setting of game.settingFiles) {
+          handleDownloadFile(setting.name, setting.content)
+          // 添加小延迟，避免浏览器阻止多个下载
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
+      }
+    } catch (error) {
+      console.error('下载文件失败:', error)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  // 加载JSZip库
+  useEffect(() => {
+    if (!window.JSZip && game && game.settingFiles.length > 0) {
+      const script = document.createElement('script')
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'
+      script.async = true
+      document.body.appendChild(script)
+      
+      return () => {
+        document.body.removeChild(script)
+      }
+    }
+  }, [game])
   
   if (loading) {
     return (
@@ -515,72 +599,77 @@ export default function GameDetailsPage() {
       
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">配置文件</h2>
+          <div className="flex items-center">
+            <h2 className="text-xl font-semibold mr-3">配置文件</h2>
+            
+            {game.settingFiles.length > 0 && (
+              <button
+                onClick={handleDownloadAllFiles}
+                disabled={isDownloading}
+                className="flex items-center px-3 py-1 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 disabled:opacity-50"
+              >
+                {isDownloading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin mr-1" />
+                    打包中...
+                  </>
+                ) : (
+                  <>
+                    <Download size={14} className="mr-1" />
+                    下载全部文件
+                  </>
+                )}
+              </button>
+            )}
+          </div>
           
           <div className="flex">
-            {isShowingUpload ? (
-              <>
-                <input
-                  ref={configFileInputRef}
-                  type="file"
-                  accept=".cfg,.vcfg,.txt,.ini,.conf,.config,.json"
-                  onChange={handleConfigFileUpload}
-                  className="hidden"
-                />
-                <button
-                  onClick={triggerConfigFileInput}
-                  disabled={isUploadingConfig}
-                  className="flex items-center px-4 py-2 mr-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
-                >
-                  {isUploadingConfig ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin mr-1" />
-                      上传中...
-                    </>
-                  ) : (
-                    <>
-                      <FileText size={16} className="mr-1" />
-                      上传配置文件
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => setIsShowingUpload(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  取消
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setIsShowingUpload(true)}
-                  className="flex items-center px-4 py-2 mr-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
+            <input
+              ref={configFileInputRef}
+              type="file"
+              accept=".cfg,.vcfg,.txt,.ini,.conf,.config,.json"
+              onChange={handleConfigFileUpload}
+              className="hidden"
+              multiple
+            />
+            
+            <button
+              onClick={triggerConfigFileInput}
+              disabled={isUploadingConfig}
+              className="flex items-center px-4 py-2 mr-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+            >
+              {isUploadingConfig ? (
+                <>
+                  <Loader2 size={16} className="animate-spin mr-1" />
+                  上传中...
+                </>
+              ) : (
+                <>
                   <Upload size={16} className="mr-1" />
                   导入配置
-                </button>
-                <input
-                  type="text"
-                  value={newSettingName}
-                  onChange={(e) => setNewSettingName(e.target.value)}
-                  placeholder="新配置文件名称"
-                  className="px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  onClick={handleAddSettingFile}
-                  disabled={!newSettingName || isAddingFile}
-                  className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isAddingFile ? (
-                    <Loader2 size={16} className="animate-spin mr-1" />
-                  ) : (
-                    <Plus size={16} className="mr-1" />
-                  )}
-                  添加
-                </button>
-              </>
-            )}
+                </>
+              )}
+            </button>
+            
+            <input
+              type="text"
+              value={newSettingName}
+              onChange={(e) => setNewSettingName(e.target.value)}
+              placeholder="新配置文件名称"
+              className="px-3 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleAddSettingFile}
+              disabled={!newSettingName || isAddingFile}
+              className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAddingFile ? (
+                <Loader2 size={16} className="animate-spin mr-1" />
+              ) : (
+                <Plus size={16} className="mr-1" />
+              )}
+              添加
+            </button>
           </div>
         </div>
         
@@ -592,25 +681,27 @@ export default function GameDetailsPage() {
         
         {game.settingFiles.length > 0 ? (
           <div>
-            {/* 标签页导航 */}
-            <div className="flex border-b mb-4 overflow-x-auto pb-1">
-              {game.settingFiles.map(setting => (
-                <button
-                  key={setting.id}
-                  onClick={() => setSelectedSettingId(setting.id)}
-                  className={`px-4 py-2 flex items-center whitespace-nowrap mr-2 rounded-t-lg ${
-                    selectedSettingId === setting.id 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-100 hover:bg-gray-200'
-                  }`}
-                >
-                  <Settings size={14} className="mr-1" />
-                  {setting.name}
-                </button>
-              ))}
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex-1 overflow-x-auto">
+                <div className="flex border-b pb-1">
+                  {game.settingFiles.map(setting => (
+                    <button
+                      key={setting.id}
+                      onClick={() => setSelectedSettingId(setting.id)}
+                      className={`px-4 py-2 flex items-center whitespace-nowrap mr-2 rounded-t-lg ${
+                        selectedSettingId === setting.id 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-gray-100 hover:bg-gray-200'
+                      }`}
+                    >
+                      <Settings size={14} className="mr-1" />
+                      {setting.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             
-            {/* 显示选中的设置文件 */}
             {selectedSettingId && (
               <div>
                 {game.settingFiles
@@ -625,6 +716,23 @@ export default function GameDetailsPage() {
                       onDelete={handleDeleteSettingFile}
                     />
                   ))}
+              </div>
+            )}
+            
+            {selectedSettingId && (
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => {
+                    const setting = game.settingFiles.find(s => s.id === selectedSettingId)
+                    if (setting) {
+                      handleDownloadFile(setting.name, setting.content)
+                    }
+                  }}
+                  className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                >
+                  <Download size={16} className="mr-1" />
+                  下载当前文件
+                </button>
               </div>
             )}
           </div>
