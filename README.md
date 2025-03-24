@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 浮影の游戏设置管理器
 
-## Getting Started
+这是一个专为游戏玩家设计的配置文件管理工具，帮助您轻松管理、编辑和分享各种游戏的配置文件。
 
-First, run the development server:
+## 功能特点
+
+- **游戏管理**：添加、编辑和删除游戏条目，支持添加游戏图标和标签
+- **配置文件管理**：为每个游戏添加多个配置文件，以标签页形式组织
+- **配置文件导入**：支持从本地上传 .cfg、.vcfg、.txt、.ini、.conf、.config、.json 等格式的配置文件
+- **编辑器支持**：内置代码编辑器，支持语法高亮
+- **下载导出**：一键下载配置文件到本地
+- **搜索和筛选**：快速查找游戏和配置文件
+- **安全保护**：只加载安全的本地图片，防止外部链接风险
+
+## 开始使用
+
+### 安装依赖
+
+```bash
+npm install
+# 或者
+yarn install
+```
+
+### 设置数据库
+
+```bash
+npx prisma migrate dev
+```
+
+### 启动开发服务器
 
 ```bash
 npm run dev
-# or
+# 或者
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+在浏览器中打开 [http://localhost:3000](http://localhost:3000) 查看效果。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 使用指南
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 添加游戏
 
-## Learn More
+1. 点击主页右上角的 "添加" 按钮
+2. 输入游戏名称
+3. 可选：上传游戏图标和添加标签
+4. 点击 "创建" 完成添加
 
-To learn more about Next.js, take a look at the following resources:
+### 管理配置文件
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. 在主页点击游戏卡片进入详情页
+2. 使用页面上的输入框添加新的配置文件
+3. 或者点击 "导入配置" 按钮上传已有的配置文件
+4. 通过标签页在不同配置文件之间切换
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 编辑配置文件
 
-## Deploy on Vercel
+1. 点击配置文件视图中的 "编辑" 按钮
+2. 在编辑器中修改内容
+3. 点击 "保存" 保存更改，或点击 "取消" 放弃更改
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 删除内容
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 在游戏详情页点击 "删除游戏" 可以删除整个游戏及其配置文件
+- 在配置文件视图中点击 "删除" 按钮可以删除单个配置文件
+- 主页上将鼠标悬停在游戏卡片上可以看到删除按钮
+
+## 技术栈
+
+- [Next.js](https://nextjs.org) - React 框架
+- [Prisma](https://prisma.io) - 数据库 ORM
+- [SQLite](https://sqlite.org) - 轻量级数据库
+- [Tailwind CSS](https://tailwindcss.com) - 样式库
+- [Framer Motion](https://framer.com/motion) - 动画库
+
+## 部署
+
+可以使用 [Vercel](https://vercel.com) 或任何支持 Next.js 的平台进行部署。对于生产环境，建议将数据库从 SQLite 迁移到 PostgreSQL 或 MySQL。
+
+## 许可
+
+MIT 许可证
