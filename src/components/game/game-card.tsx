@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Gamepad, Trash2, Loader2, Settings } from 'lucide-react'
-import { slugify } from '@/app/games/[id]/page'
 
 interface GameCardProps {
   id: string
@@ -29,9 +28,6 @@ export function GameCard({ id, name, iconUrl, settingsCount, onDelete }: GameCar
   const safeIconUrl = iconUrl && isSafeImageUrl(iconUrl) ? iconUrl : null;
   const [isDeleting, setIsDeleting] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  
-  // 创建URL友好的游戏名称
-  const gameSlug = slugify(name);
   
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -77,7 +73,7 @@ export function GameCard({ id, name, iconUrl, settingsCount, onDelete }: GameCar
         </div>
       )}
       
-      <Link href={`/games/${gameSlug}`} className="block h-full">
+      <Link href={`/games/${id}`} className="block h-full">
         <div className="p-5 flex flex-col h-full">
           <div className="flex items-center mb-4">
             <div className="w-16 h-16 relative mr-4 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-lg overflow-hidden flex items-center justify-center shadow-inner">

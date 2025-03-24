@@ -85,7 +85,7 @@ export default function GameDetailsPage() {
       setLoading(true)
       
       try {
-        // 使用原始id查询，API会处理是否为游戏名称或ID
+        // 使用ID查询游戏
         const response = await fetch(`/api/games/${id}`)
         
         if (!response.ok) {
@@ -94,12 +94,6 @@ export default function GameDetailsPage() {
         
         const data = await response.json()
         setGame(data)
-        
-        // 如果URL不是游戏名称的格式，重定向到使用名称的URL
-        const currentSlug = slugify(data.name)
-        if (id !== currentSlug) {
-          router.replace(`/games/${currentSlug}`, { scroll: false })
-        }
       } catch (error) {
         console.error('获取游戏详情失败:', error)
         setError('无法加载游戏详情')
@@ -109,7 +103,7 @@ export default function GameDetailsPage() {
     }
     
     fetchGame()
-  }, [id, router])
+  }, [id])
   
   // 设置激活的设置文件
   useEffect(() => {
