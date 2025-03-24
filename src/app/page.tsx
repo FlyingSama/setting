@@ -20,7 +20,7 @@ export default function Home() {
   
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center">游戏设置管理器</h1>
+      <h1 className="text-3xl font-bold mb-8 text-center">浮影の游戏设置</h1>
       
       <div className="max-w-5xl mx-auto mb-8">
         <div className="flex flex-col md:flex-row gap-4 mb-6">
